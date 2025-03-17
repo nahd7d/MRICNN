@@ -8,9 +8,13 @@ This project focuses on processing and analyzing MRI scans stored in the DICOM f
 
 # Project Goals
 DICOM Image Processing: Load, visualize, and preprocess MRI images.
+
 Metadata Extraction: Analyze metadata such as scan dates, modality, and imaging parameters.
+
 CNN Implementation: Develop and train a deep learning model to classify MRI images based on tumor characteristics.
+
 Tumor Progression Analysis: Compare images from two different time points to assess treatment effects.
+
 
 # Methodology
 
