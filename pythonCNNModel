@@ -1,0 +1,140 @@
+#Import all packafes
+
+import sys
+!{sys.executable} -m pip install keras==2.3.1
+!{sys.executable} -m pip install --upgrade "numpy>=1.2"
+import os
+import numpy as np
+import math
+import glob
+from PIL import Image
+import matplotlib.pyplot as plt
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization, Conv2D, MaxPooling2D
+from keras.optimizers import Adadelta, SGD
+from keras.utils import np_utils
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve, auc, classification_report
+from sklearn.model_selection import train_test_split
+import sys
+!{sys.executable} -m pip install keras==2.3.1
+!{sys.executable} -m pip install --upgrade "numpy>=1.2"
+
+
+# Create CNN model¶
+def create_model(img_channels, img_rows, img_cols, learning_rate=0.01):
+    # define the optimizer with the specified learning rate
+    optimizer = Adadelta(lr=learning_rate)
+    
+    model = Sequential()
+    
+    model.add(Conv2D(16, kernel_size=3, padding='same', input_shape=(img_channels, img_rows, img_cols)))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(16, kernel_size=5, padding="same"))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    
+    model.add(MaxPooling2D(pool_size=2, data_format='channels_first'))
+
+    model.add(Conv2D(16, kernel_size=3, padding="same"))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(64, kernel_size=5, padding="same"))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(64, kernel_size=3, padding="same"))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    
+    model.add(MaxPooling2D(pool_size=2, data_format='channels_first'))
+
+    model.add(Conv2D(128, kernel_size=3, padding="same"))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+
+    model.add(MaxPooling2D(pool_size=2, data_format='channels_first'))
+    
+    model.add(Flatten())
+    model.add(Dense(128, kernel_initializer="he_normal"))
+    model.add(Activation('relu'))
+
+    model.add(Dropout(0.5)) 
+    model.add(Dense(32, kernel_initializer="he_normal"))
+    model.add(Activation('relu'))
+
+    model.add(Dropout(0.5)) 
+    model.add(Dense(1))
+    model.add(Activation('sigmoid'))
+    
+    # compile the model with the specified optimizer
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+
+    return model
+
+
+# Load the data
+
+img_rows = 32
+img_cols = 32
+img_channels = 1
+
+negative_images_path = '../resources/cnn-images/negative_images/'
+positive_images_path = '../resources/cnn-images/positive_images/'
+
+X, y = load_data(negative_images_path, positive_images_path)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+
+X_train = reshape_X(X_train, img_channels, img_rows, img_cols)
+X_test = reshape_X(X_test, img_channels, img_rows, img_cols)
+
+
+batch_size = 64
+epochs = 10
+
+# create model
+model = create_model(img_channels, img_rows, img_cols)
+
+# fit the model
+model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.1, shuffle=True)
+
+# evaluate the model
+Y_pred = model.predict(X_test, batch_size=32)
+roc = roc_auc_score(y_test, Y_pred)
+print("ROC:", round(roc, 3))
+
+
+
+
+# Create and execute the grid search
+#Create the parameter grid, a wrapped model, and execute the grid search.
+#Output the best model's accuracy and it's associated parameters.
+
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import GridSearchCV
+
+# Define the Keras classifier model
+keras_model = KerasClassifier(build_fn=create_model, img_channels=img_channels, img_rows=img_rows, img_cols=img_cols, verbose=0)
+
+# Define the parameter grid
+param_grid = {
+    'epochs': [10, 15],
+    'batch_size': [32, 64],
+    'learning_rate': [0.001, 0.01]
+}
+
+# Perform grid search with adjusted parameters
+grid = GridSearchCV(estimator=keras_model, param_grid=param_grid, n_jobs=1, cv=3, verbose=2, error_score='raise')
+grid_result = grid.fit(X_train, y_train)
+
+# Print the best model and parameters
+print("Best model: %f with parameters %s" % (grid_result.best_score_, grid_result.best_params_))
+
+
+# With the grid search, the accruancy went from al_accuracy: 0.7140, to 0.784233.
+
