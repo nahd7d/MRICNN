@@ -1,4 +1,4 @@
-# Access data stored in DICOM image format files. 
+# Access data stored in DICOM image format files
 
 import sys
 !{sys.executable} -m pip install pydicom scikit-image
